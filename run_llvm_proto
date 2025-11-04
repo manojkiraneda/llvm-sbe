@@ -55,9 +55,18 @@ fi
 # --- CREATE BUILD DIRECTORY IF MISSING ---
 mkdir -p "${LLVM_BUILD_DIR}"
 
+# Detect TTY availability
+if [ -t 1 ]; then
+  DOCKER_TTY_ARGS="-it"
+else
+  DOCKER_TTY_ARGS="--rm"
+fi
+
 # --- RUN THE CONTAINER ---
 echo "Starting LLVM development container..."
-docker run -it --rm \
+
+docker run ${DOCKER_TTY_ARGS} \
+    --rm \
     --name "${CONTAINER_NAME}" \
     -v "${LLVM_SRC_DIR}:/root/llvm-project" \
     -v "${LLVM_BUILD_DIR}:/root/llvm-project/build" \
