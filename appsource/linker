@@ -1,0 +1,27 @@
+OUTPUT_FORMAT(elf32-powerpc);
+
+MEMORY {
+    sram    :   ORIGIN = 0xFFE80000, LENGTH = 0x180000
+}
+
+SECTIONS {
+    /* Text, read only data and other permanent read-only sections. */
+    . = 0xFFE80000;
+    _sppe_start = .;
+
+    /* Vectors should be at top of memory. */
+    .startup . : {
+        KEEP(*(.startup));
+    }
+
+    /* Text section */
+   .text . : {
+        *(.text)
+        *(.text.*)
+        . = ALIGN(8);
+    }
+   .remaining . : {
+        *(*)
+    }
+   _sbe_image_size = . - _sppe_start;
+}

@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -e
+
+LLVM_SRC_DIR="${HOME}/llvm-project/llvm"
+CPP_SRC_DIR="${HOME}/llvm-project/appsource"
+LLVM_BUILD_DIR="${LLVM_SRC_DIR}/build"
+CONTAINER_NAME="llvm-dev"
+
+# --- CHECK LLVM SOURCE ---
+#if [ ! -d "${LLVM_SRC_DIR}/llvm" ]; then
+#    echo "LLVM source not found, cloning..."
+    #git clone --depth 1 https://github.com/llvm/llvm-project.git "${LLVM_SRC_DIR}/llvm"
+#else
+#    echo "LLVM source already exists, skipping clone."
+#fi
+
+IMAGE_NAME="llvm-dev:latest"
+DOCKERFILE_PATH="${HOME}/llvm-project/Dockerfile"
+
+# --- CHECK & BUILD DOCKER IMAGE ---
+if ! docker image inspect "${IMAGE_NAME}" >/dev/null 2>&1; then
+    echo "Docker image ${IMAGE_NAME} not found. Building it now..."
+    if [ ! -f "${DOCKERFILE_PATH}" ]; then
+        echo "Error: Dockerfile not found at ${DOCKERFILE_PATH}."
+        exit 1
+    fi
+    docker build -t "${IMAGE_NAME}" -f "${DOCKERFILE_PATH}" "$(dirname "${DOCKERFILE_PATH}")"
+else
+    echo "Docker image ${IMAGE_NAME} already exists. Skipping build."
+fi
+
+LLVM_TAR="${LLVM_SRC_DIR}/llvm-project.tar.xz"
+LLVM_URL="https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.4/llvm-project-21.1.4.src.tar.xz"
+
+if [ ! -d "${LLVM_SRC_DIR}/llvm" ]; then
+    echo "LLVM source not found."
+
+    mkdir -p "${LLVM_SRC_DIR}"
+
+    if [ ! -f "${LLVM_TAR}" ]; then
+        echo "Downloading LLVM tarball..."
+        wget -O "${LLVM_TAR}" "${LLVM_URL}"
+    else
+        echo "LLVM tarball already exists, skipping download."
+    fi
+
+    echo "Extracting LLVM..."
+    tar -xf "${LLVM_TAR}" -C "${LLVM_SRC_DIR}"
+    mv "${LLVM_SRC_DIR}"/llvm-project-* "${LLVM_SRC_DIR}/llvm"
+else
+    echo "LLVM source already exists, skipping download and extraction."
+fi
+
+# --- CREATE BUILD DIRECTORY IF MISSING ---
+mkdir -p "${LLVM_BUILD_DIR}"
+
+# --- RUN THE CONTAINER ---
+echo "Starting LLVM development container..."
+docker run -it --rm \
+    --name "${CONTAINER_NAME}" \
+    -v "${LLVM_SRC_DIR}:/root/llvm-project" \
+    -v "${LLVM_BUILD_DIR}:/root/llvm-project/build" \
+    -v "${CPP_SRC_DIR}:/workspace" \
+    -w /root/llvm-project/llvm/build \
+    llvm-dev:latest \
+    bash -c "
+        set -e;
+
+
+        if [ ! -f build.ninja ]; then
+            echo 'Configuring LLVM with CMake...';
+            cmake -G Ninja ../llvm \
+                -DLLVM_ENABLE_PROJECTS='clang;lld' \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DLLVM_TARGETS_TO_BUILD='PowerPC' \
+                -DCMAKE_INSTALL_PREFIX=/opt/llvm-install
+        else
+            echo 'CMake already configured, skipping...';
+        fi
+
+        echo 'Building LLVM...';
+	ninja -j$(nproc);
+
+        if [ ! -f /opt/llvm-install/bin/clang ]; then
+            echo 'Installing LLVM...';
+            ninja install;
+        fi
+
+        echo 'LLVM build complete. Launching shell.';
+        export PATH=/opt/llvm-install/bin:\$PATH
+	cd  /workspace
+
+	clang --target=powerpc-linux-gnu --sysroot=/ -B/usr/lib/gcc-cross/powerpc-linux-gnu/13 -T ./linker -Wl,-L/usr/powerpc-linux-gnu/lib -Wl,-rpath-link=/usr/powerpc-linux-gnu/lib -Os -nostartfiles -nostdlib ./test.c ./startup.s
+	python3 parseandcut.py a.out
+	hexdump -C a.bin
+	exec bash
+    "
