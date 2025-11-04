@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-LLVM_SRC_DIR="${HOME}/llvm-project/llvm"
-CPP_SRC_DIR="${HOME}/llvm-project/appsource"
-LLVM_BUILD_DIR="${LLVM_SRC_DIR}/build"
 CONTAINER_NAME="llvm-dev"
+LLVM_SRC_DIR="$(realpath llvm)"
+CPP_SRC_DIR="$(realpath appsource)"
+LLVM_BUILD_DIR="$(realpath ${LLVM_SRC_DIR}/build)"
+
 
 # --- CHECK LLVM SOURCE ---
 #if [ ! -d "${LLVM_SRC_DIR}/llvm" ]; then
@@ -15,7 +16,7 @@ CONTAINER_NAME="llvm-dev"
 #fi
 
 IMAGE_NAME="llvm-dev:latest"
-DOCKERFILE_PATH="${HOME}/llvm-project/Dockerfile"
+DOCKERFILE_PATH="Dockerfile"
 
 # --- CHECK & BUILD DOCKER IMAGE ---
 if ! docker image inspect "${IMAGE_NAME}" >/dev/null 2>&1; then

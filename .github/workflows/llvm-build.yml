@@ -1,0 +1,28 @@
+name: LLVM Build & Run
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:  # allow manual trigger
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git cmake ninja-build python3 python3-pip docker.io
+
+      - name: Verify Docker
+        run: docker --version
+
+      - name: Run LLVM build container
+        run: |
+          chmod +x ./run_llvm_proto
+          ./run_llvm_proto
