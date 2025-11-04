@@ -1,10 +1,10 @@
-name: LLVM Build & Run
+name: LLVM Build & Run (Cached)
 
 on:
   push:
     branches: [ main ]
   pull_request:
-  workflow_dispatch:  # allow manual trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,15 +14,66 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up cache directories
+        run: |
+          mkdir -p ${{ github.workspace }}/.cache/docker
+          mkdir -p ${{ github.workspace }}/.cache/llvm-src
+          mkdir -p ${{ github.workspace }}/.cache/llvm-build
+
+      # Cache Docker layers to avoid rebuilding the llvm-dev image
+      - name: Cache Docker image layers
+        uses: actions/cache@v4
+        with:
+          path: ~/.docker
+          key: docker-${{ runner.os }}-${{ hashFiles('Dockerfile') }}
+          restore-keys: |
+            docker-${{ runner.os }}-
+
+      # Cache LLVM source directory (downloaded tar + extracted llvm)
+      - name: Cache LLVM source
+        uses: actions/cache@v4
+        with:
+          path: |
+            llvm
+          key: llvm-src-${{ hashFiles('run_llvm_proto') }}
+          restore-keys: |
+            llvm-src-
+
+      # Cache LLVM build directory (CMake + Ninja build artifacts)
+      - name: Cache LLVM build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            llvm/build
+          key: llvm-build-${{ hashFiles('llvm/llvm/**', 'run_llvm_proto') }}
+          restore-keys: |
+            llvm-build-
+
       - name: Install prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y git cmake ninja-build python3 python3-pip
+          sudo apt-get install -y git cmake ninja-build python3 python3-pip wget
 
       - name: Verify Docker
         run: docker --version
 
+      # Build and run container — your script handles skipping when not needed
       - name: Run LLVM build container
         run: |
           chmod +x ./run_llvm_proto
           ./run_llvm_proto
+
+      - name: Save Docker image to cache (optional but faster next time)
+        if: always()
+        run: |
+          docker save llvm-dev:latest -o llvm-dev.tar
+        continue-on-error: true
+
+      - name: Cache Docker image tarball
+        uses: actions/cache@v4
+        with:
+          path: llvm-dev.tar
+          key: llvm-image-${{ hashFiles('Dockerfile') }}
+          restore-keys: |
+            llvm-image-
+
