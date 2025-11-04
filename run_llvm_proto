@@ -4,7 +4,7 @@ set -e
 CONTAINER_NAME="llvm-dev"
 LLVM_SRC_DIR="$(realpath llvm)"
 CPP_SRC_DIR="$(realpath appsource)"
-LLVM_BUILD_DIR="$(realpath ${LLVM_SRC_DIR}/build)"
+LLVM_BUILD_DIR="${LLVM_SRC_DIR}/build"
 
 
 # --- CHECK LLVM SOURCE ---
