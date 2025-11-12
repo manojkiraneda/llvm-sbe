@@ -2,8 +2,8 @@
 set -e
 
 CONTAINER_NAME="llvm-dev"
-LLVM_SRC_DIR="$(realpath llvm)"
-CPP_SRC_DIR="$(realpath appsource)"
+LLVM_SRC_DIR="`pwd`/llvm"
+CPP_SRC_DIR="`pwd`/appsource"
 LLVM_BUILD_DIR="${LLVM_SRC_DIR}/build"
 
 
@@ -89,7 +89,7 @@ docker run ${DOCKER_TTY_ARGS} \
         fi
 
         echo 'Building LLVM...';
-	ninja -j$(nproc);
+	ninja;
 
         if [ ! -f /opt/llvm-install/bin/clang ]; then
             echo 'Installing LLVM...';
