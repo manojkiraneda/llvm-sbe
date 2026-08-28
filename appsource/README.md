@@ -7,25 +7,33 @@ The image is split into four layers:
 - `include/sbe/` is the runtime/module public API.
 - `apps/<name>/` contains one `main` and its application-specific modules.
 
-Configure, test, and build the default hello image inside the LLVM development
+Configure, test, and build all applications inside the LLVM development
 container with:
 
 ```sh
-meson setup output/meson-hello --cross-file cross/ppe42.ini -Dapp=hello
-meson test -C output/meson-hello --print-errorlogs
-meson compile -C output/meson-hello
+meson setup output/meson-apps --cross-file cross/ppe42.ini
+meson test -C output/meson-apps --print-errorlogs
+meson compile -C output/meson-apps
 ```
 
-Select another application by changing `-Dapp=name` and using a separate build
+Build only one application by passing `-Dapp=name` and using a separate build
 directory. Shared modules are listed in `runtime_sources` in `meson.build`;
 applications live in separate `apps/name` directories. Each build produces an ELF,
 flat binary, map, disassembly, and symbol file in its Meson build directory.
 
+For example, build the formatted-arguments application with:
+
+```sh
+meson setup output/meson-hellowitharguments --cross-file cross/ppe42.ini \
+  -Dapp=hellowitharguments
+meson compile -C output/meson-hellowitharguments
+```
+
 The hello smoke test copies `Hello world` into `sbe_test_output` and
 stores the snprintf return value in `sbe_test_output_length`. Their SRAM addresses
-are in `output/meson-hello/hello.symbols`, allowing a simulator or debugger to inspect the
+are in `output/meson-apps/hello.symbols`, allowing a simulator or debugger to inspect the
 result without requiring a console device.
 
-For now, `sbe_snprintf` is deliberately just a bounded string copy. It returns the
-source length and always NUL-terminates a non-empty destination. Formatting can be
-introduced later when an application actually needs it.
+`sbe_snprintf` and `sbe_vsnprintf` support `%c`, `%d`, `%i`, `%s`, `%u`, `%x`,
+`%X`, and `%%`. They return the full output length and always NUL-terminate a
+non-empty destination, including when the output is truncated.

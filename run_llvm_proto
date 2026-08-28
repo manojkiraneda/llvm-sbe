@@ -173,12 +173,12 @@ docker run ${DOCKER_TTY_ARGS} \
  echo '=== Running Assembly Test (simple_test_assembly/test_asm.sh) ==='
  cd simple_test_assembly && ./test_asm.sh && cd ..
 
- # Build the reusable runtime and hello formatting smoke test.
+ # Build all PPE42 applications and run native tests.
  echo ''
- echo '=== Building PPE42 application framework (hello) ==='
- meson setup output/meson-hello --cross-file cross/ppe42.ini -Dapp=hello
- meson test -C output/meson-hello --print-errorlogs
- meson compile -C output/meson-hello
+ echo '=== Building PPE42 applications ==='
+ meson setup output/meson-apps --cross-file cross/ppe42.ini
+ meson test -C output/meson-apps --print-errorlogs
+ meson compile -C output/meson-apps
 
  # Run the basic C test (64-bit load/store)
  echo ''

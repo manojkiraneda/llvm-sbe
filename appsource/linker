@@ -34,7 +34,7 @@ SECTIONS
     .sdata   . : {  *(.sdata*) } > sram
 
     . = ALIGN(8);
-    .rwdata . : { *(.data*) } > sram
+    .rwdata ALIGN(8) : { *(.data*) } > sram
 
     _SRAM_CLEAR_START = .;
 
