@@ -1,0 +1,36 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: LLVM Build <llvm-build@localhost>
+Date: Fri, 28 Aug 2026 00:00:00 +0530
+Subject: [PATCH] Disable SVR4 floating-point vararg marker for PPE42
+
+PPE42 has no floating-point support and does not implement the CR6
+instruction emitted by the generic 32-bit SVR4 variadic-call lowering.
+Do not generate or model that floating-point argument marker for PPE42.
+
+---
+ lib/Target/PowerPC/PPCISelLowering.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/Target/PowerPC/PPCISelLowering.cpp b/lib/Target/PowerPC/PPCISelLowering.cpp
+--- a/lib/Target/PowerPC/PPCISelLowering.cpp
++++ b/lib/Target/PowerPC/PPCISelLowering.cpp
+@@ -5787,7 +5787,7 @@ void PPCTargetLowering::FinishCall(
+     Ops.push_back(DAG.getRegister(Subtarget.getTOCPointerRegister(), RegVT));
+ 
+   // Add implicit use of CR bit 6 for 32-bit SVR4 vararg calls
+-  if (CFlags.IsVarArg && Subtarget.is32BitELFABI())
++  if (CFlags.IsVarArg && Subtarget.is32BitELFABI() && !Subtarget.isPPE42())
+     Ops.push_back(DAG.getRegister(PPC::CR1EQ, MVT::i32));
+ 
+   // Add a register mask operand representing the call-preserved registers.
+@@ -6207,7 +6207,7 @@ SDValue PPCTargetLowering::LowerCall_32SVR4(
+ 
+   // Set CR bit 6 to true if this is a vararg call with floating args passed in
+   // registers.
+-  if (IsVarArg) {
++  if (IsVarArg && !Subtarget.isPPE42()) {
+     SDVTList VTs = DAG.getVTList(MVT::Other, MVT::Glue);
+     SDValue Ops[] = { Chain, InGlue };
+ 
+-- 
+2.50.1
