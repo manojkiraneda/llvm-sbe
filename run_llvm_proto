@@ -85,11 +85,10 @@ if [ ! -d "${LLVM_SRC_DIR}/llvm" ]; then
         for PATCH_FILE in "${PATCH_DIR}"/*.patch; do
             if [ -f "${PATCH_FILE}" ]; then
                 echo "Applying patch: $(basename "${PATCH_FILE}")..."
-                git am --3way "${PATCH_FILE}"
-                if [ $? -ne 0 ]; then
-                    echo "Warning: Patch $(basename "${PATCH_FILE}") had conflicts."
-                    echo "Attempting to continue with resolved conflicts..."
-                    git am --continue || git am --skip
+                if ! git am --3way "${PATCH_FILE}"; then
+                    git am --abort
+                    echo "Error: Patch $(basename "${PATCH_FILE}") failed; patching stopped." >&2
+                    exit 1
                 fi
                 echo "Patch applied successfully."
             fi
@@ -169,10 +168,8 @@ docker run ${DOCKER_TTY_ARGS} \
         echo 'Building LLVM...';
 	ninja;
 
-        if [ ! -f /opt/llvm-install/bin/clang ]; then
-            echo 'Installing LLVM...';
-            ninja install;
-        fi
+        echo 'Installing LLVM...';
+        ninja install;
 
         echo 'LLVM build complete.';
         export PATH=/opt/llvm-install/bin:\$PATH

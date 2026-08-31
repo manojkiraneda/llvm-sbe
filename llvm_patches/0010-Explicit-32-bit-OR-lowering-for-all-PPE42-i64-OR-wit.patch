@@ -19,13 +19,9 @@ an explicit DAG combiner that handles all OR-with-immediate shapes:
 - Single-word single-bit constants (e.g. 0x8000000000000000) are handled
   by the combiner as a single oris, which is cheaper than RLDIMI_VDR.
 
-Remove the Pat<(or i64:, imm:), (OR8_VDR ...)> fallback pattern
-from PPCInstrPPEVD.td — it is now dead code. OR8_VDR retains its
-register-register pattern for pure reg-reg 64-bit OR.
 ---
  lib/Target/PowerPC/PPCISelLowering.cpp | 83 ++++++++++++++------------
- lib/Target/PowerPC/PPCInstrPPEVD.td    | 17 +++---
- 2 files changed, 54 insertions(+), 46 deletions(-)
+ 1 file changed, 45 insertions(+), 38 deletions(-)
 
 diff --git a/lib/Target/PowerPC/PPCISelLowering.cpp b/lib/Target/PowerPC/PPCISelLowering.cpp
 index 2cd6d6a..1631a7b 100644
@@ -133,37 +129,5 @@ index 2cd6d6a..1631a7b 100644
    }
    case ISD::AND: {
      // We don't want (and (zext (shift...)), C) if C fits in the width of the
-diff --git a/lib/Target/PowerPC/PPCInstrPPEVD.td b/lib/Target/PowerPC/PPCInstrPPEVD.td
-index d6377bc..47350fe 100644
---- a/lib/Target/PowerPC/PPCInstrPPEVD.td
-+++ b/lib/Target/PowerPC/PPCInstrPPEVD.td
-@@ -63,18 +63,17 @@ def LI8_VDR : PPCPostRAExpPseudo<(outs vdrc:$rD), (ins s16imm64:$imm),
-                                  "#LI8_VDR", []>;
- }
- 
--// Pseudo-instruction for 64-bit OR operation using VDR register pairs
--// This will be expanded post-RA into two 32-bit OR instructions (one for each GPR)
-+// Pseudo-instruction for 64-bit OR operation using VDR register pairs.
-+// Expanded post-RA into two 32-bit OR instructions (one per GPR in the pair).
- // Format: OR8_VDR vdrc_out, vdrc_in1, vdrc_in2
--// Pattern: Matches i64 OR operations for PPE42
-+//
-+// Only the register-register pattern is kept here.  OR-with-immediate is
-+// handled exclusively in the DAG combiner (PPCISelLowering.cpp combineISD_OR)
-+// so that the run-of-ones → RLDIMI_VDR path in tryAsSingleRLDIMI() is
-+// reached first during instruction selection.  The Pat fallback that used to
-+// match (or i64 reg, imm) → OR8_VDR(reg, LI8_VDR(imm)) has been removed.
- let Predicates = [IsPPE42] in {
- def OR8_VDR : PPCPostRAExpPseudo<(outs vdrc:$rD), (ins vdrc:$rA, vdrc:$rB),
-                                  "#OR8_VDR",
-                                  [(set i64:$rD, (or i64:$rA, i64:$rB))]>;
--
--// Pattern for OR with immediate - fallback when single-word optimization doesn't apply
--// This pattern has lower priority (comes after DAG combining optimizations)
--// Loads immediate into VDR then performs OR
--def : Pat<(or i64:$rA, imm:$imm),
--          (OR8_VDR vdrc:$rA, (LI8_VDR imm:$imm))>;
- }
 -- 
 2.48.1
-
